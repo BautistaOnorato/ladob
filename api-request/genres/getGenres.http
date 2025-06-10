@@ -1,0 +1,4 @@
+### GET request to retrieve all genres
+GET http://localhost:8000/genres/
+
+###

@@ -1,0 +1,8 @@
+### PUT request to update an existing genre using the id
+PUT http://localhost:8000/genres/2b2aed88-f70c-4ab6-bece-793a085b2c23
+Content-Type: application/json
+
+{
+  "name": "Heavy Metal"
+}
+###

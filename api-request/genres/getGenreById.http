@@ -1,0 +1,4 @@
+### GET request to retrieve a genre by id
+GET http://localhost:8000/genres/2b2aed88-f70c-4ab6-bece-793a085b2c23
+
+###
