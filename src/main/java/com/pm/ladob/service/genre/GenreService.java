@@ -48,12 +48,16 @@ public class GenreService implements IGenreService {
 
     @Override
     public Genre updateGenre(GenreRequestDto genreRequestDto, UUID id) {
+        if (genreRepository.existsByName(genreRequestDto.getName())) {
+            throw new AlreadyExistsException("A genre with this name already exists: " + genreRequestDto.getName());
+        }
+
         Genre genre = genreRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Genre not found with id: " + id));
 
         genre.setName(genreRequestDto.getName());
 
-        return genre;
+        return genreRepository.save(genre);
     }
 
     @Override

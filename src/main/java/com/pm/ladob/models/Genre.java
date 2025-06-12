@@ -20,6 +20,7 @@ public class Genre {
     private UUID id;
 
     @NotNull
+    @Column(unique = true)
     private String name;
 
     @JsonIgnore
