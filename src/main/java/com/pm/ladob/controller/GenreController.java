@@ -64,6 +64,10 @@ public class GenreController {
             @ApiResponse(responseCode = "201", description = "Genre created successfully",
                     content = @Content(schema = @Schema(implementation = Genre.class))),
             @ApiResponse(responseCode = "400", description = "Body did not pass validation filters",
+                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
+            @ApiResponse(responseCode = "401", description = "User is not authenticated",
+                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
+            @ApiResponse(responseCode = "403", description = "User cannot access this resource",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
     @SecurityRequirement(name = "bearerAuth")
@@ -81,6 +85,10 @@ public class GenreController {
             @ApiResponse(responseCode = "200", description = "Genre updated successfully",
                     content = @Content(schema = @Schema(implementation = Genre.class))),
             @ApiResponse(responseCode = "400", description = "Unable to find genre in the database or body did not pass validation filters",
+                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
+            @ApiResponse(responseCode = "401", description = "User is not authenticated",
+                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
+            @ApiResponse(responseCode = "403", description = "User cannot access this resource",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
     @SecurityRequirement(name = "bearerAuth")
@@ -99,6 +107,10 @@ public class GenreController {
             @ApiResponse(responseCode = "204", description = "Genre removed successfully",
                     content = @Content(schema = @Schema(implementation = Genre.class))),
             @ApiResponse(responseCode = "400", description = "Unable to find genre in the database",
+                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
+            @ApiResponse(responseCode = "401", description = "User is not authenticated",
+                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
+            @ApiResponse(responseCode = "403", description = "User cannot access this resource",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
     @SecurityRequirement(name = "bearerAuth")

@@ -1,406 +1,280 @@
 package com.pm.ladob.auth;
 
-import com.pm.ladob.AbstractIntegrationTest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.ladob.config.TestUserDataLoader;
+import com.pm.ladob.dto.auth.LoginRequestDto;
+import com.pm.ladob.dto.auth.RegisterRequestDto;
 import com.pm.ladob.enums.UserRole;
-import com.pm.ladob.models.Genre;
-import com.pm.ladob.repository.GenreRepository;
+import com.pm.ladob.models.User;
+import com.pm.ladob.repository.UserRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.UUID;
-
-import static org.hamcrest.Matchers.matchesRegex;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(TestUserDataLoader.class)
-public class AuthControllerMVCTest extends AbstractIntegrationTest {
+public class AuthControllerMVCTest {
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private GenreRepository genreRepository;
+    private UserRepository userRepository;
 
-    private String token;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        genreRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
-    void itShouldGetGenres() throws Exception {
-        Genre genre1 = new Genre();
-        genre1.setName("Rock");
-        Genre genre2 = new Genre();
-        genre2.setName("Pop");
-        genreRepository.save(genre1);
-        genreRepository.save(genre2);
+    void itShouldRegisterUser() throws Exception {
+        RegisterRequestDto request = RegisterRequestDto.builder()
+                .email("newuser@test.com")
+                .password("password")
+                .firstName("user")
+                .lastName("test")
+                .build();
 
-        mockMvc.perform(get("/genres/"))
+        mockMvc.perform(post("/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].name").value("Rock"))
-                .andExpect(jsonPath("$[1].name").value("Pop"));
+                .andExpect(jsonPath("$.email").value("newuser@test.com"))
+                .andExpect(jsonPath("$.active").value(false));
+
+        Assertions.assertEquals(1, userRepository.count());
     }
 
     @Test
-    void itShouldGetGenreById() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
+    void itShouldNotRegisterUserWithMissingFields() throws Exception {
+        RegisterRequestDto request = RegisterRequestDto.builder().build();
 
-        mockMvc.perform(get("/genres/{id}", genre.getId()))
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.errors.length()").value(4));
+
+        Assertions.assertEquals(0, userRepository.count());
+    }
+
+    @Test
+    void itShouldNotRegisterAlreadyExistingUser() throws Exception {
+        User user = User.builder()
+                .email("newuser@test.com")
+                .password("password")
+                .firstName("user")
+                .lastName("test")
+                .active(false)
+                .role(UserRole.USER)
+                .build();
+
+        userRepository.save(user);
+
+        RegisterRequestDto request = RegisterRequestDto.builder()
+                .email("newuser@test.com")
+                .password("passowrd")
+                .firstName("user")
+                .lastName("test")
+                .build();
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.errors.message").value("User already exists with email: " + request.getEmail()));
+
+        Assertions.assertEquals(1, userRepository.count());
+    }
+
+    @Test
+    void itShouldNotRegisterUserWithPasswordLengthUnder8() throws Exception {
+        RegisterRequestDto request = RegisterRequestDto.builder()
+                .email("newuser@test.com")
+                .password("pass")
+                .firstName("user")
+                .lastName("test")
+                .build();
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.errors.password").value("Password must be at least 8 characters long"));
+
+        Assertions.assertEquals(0, userRepository.count());
+    }
+
+    @Test
+    void itShouldNotRegisterUserWithInvalidEmail() throws Exception {
+        RegisterRequestDto request = RegisterRequestDto.builder()
+                .email("newusertest.com")
+                .password("password")
+                .firstName("user")
+                .lastName("test")
+                .build();
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.errors.email").value("Email should be a valid email address"));
+
+        Assertions.assertEquals(0, userRepository.count());
+    }
+
+    @Test
+    void itShouldLoginUser() throws Exception {
+        User user = User.builder()
+                .email("newuser@test.com")
+                .password(passwordEncoder.encode("password"))
+                .firstName("user")
+                .lastName("test")
+                .active(false)
+                .role(UserRole.USER)
+                .build();
+
+        userRepository.save(user);
+
+        LoginRequestDto request = LoginRequestDto.builder()
+                .email("newuser@test.com")
+                .password("password")
+                .build();
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(genre.getId().toString()))
-                .andExpect(jsonPath("$.name").value("Rock"));
+                .andExpect(jsonPath("$.token").exists());
     }
 
     @Test
-    void itShouldNotGetGenreById() throws Exception {
-        UUID id = UUID.randomUUID();
+    void itShouldNotLoginUserWithMissingFields() throws Exception {
+        User user = User.builder()
+                .email("newuser@test.com")
+                .password(passwordEncoder.encode("password"))
+                .firstName("user")
+                .lastName("test")
+                .active(false)
+                .role(UserRole.USER)
+                .build();
 
-        mockMvc.perform(get("/genres/{id}", id))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.statusCode").value(404))
+        userRepository.save(user);
+
+        LoginRequestDto request = LoginRequestDto.builder().build();
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Genre not found with id: " + id));
+                .andExpect(jsonPath("$.errors.length()").value(2));
     }
 
     @Test
-    void itShouldCreateGenre() throws Exception {
-        String validGenreJson = """
-                {
-                    "name": "Rock"
-                }
-                """;
+    void itShouldNotLoginUserWithInvalidEmail() throws Exception {
+        User user = User.builder()
+                .email("newuser@test.com")
+                .password(passwordEncoder.encode("password"))
+                .firstName("user")
+                .lastName("test")
+                .active(false)
+                .role(UserRole.USER)
+                .build();
 
-        mockMvc.perform(post("/genres/")
-                        .with(authToken(UserRole.ADMIN))
+        userRepository.save(user);
+
+        LoginRequestDto request = LoginRequestDto.builder()
+                .email("newusertest.com")
+                .password("password")
+                .build();
+
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(matchesRegex("^[0-9a-fA-F-]{36}$")))
-                .andExpect(jsonPath("$.name").value("Rock"));
-
-        Assertions.assertEquals(1, genreRepository.count());
-        Assertions.assertEquals("Rock", genreRepository.findAll().getFirst().getName());
-    }
-
-    @Test
-    void itShouldNotCreateGenreWithRoleUser() throws Exception {
-        String validGenreJson = """
-                {
-                    "name": "Rock"
-                }
-                """;
-
-        mockMvc.perform(post("/genres/")
-                        .with(authToken(UserRole.USER))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.statusCode").value(403))
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Access Denied"));
-
-        Assertions.assertEquals(0, genreRepository.count());
+                .andExpect(jsonPath("$.errors.email").value("Email should be a valid email address"));
     }
 
     @Test
-    void itShouldNotCreateGenreWithoutToken() throws Exception {
-        String validGenreJson = """
-                {
-                    "name": "Rock"
-                }
-                """;
+    void itShouldNotLoginUserWithPasswordLengthuUnder8() throws Exception {
+        User user = User.builder()
+                .email("newuser@test.com")
+                .password(passwordEncoder.encode("password"))
+                .firstName("user")
+                .lastName("test")
+                .active(false)
+                .role(UserRole.USER)
+                .build();
 
-        mockMvc.perform(post("/genres/")
+        userRepository.save(user);
+
+        LoginRequestDto request = LoginRequestDto.builder()
+                .email("newuser@test.com")
+                .password("pass")
+                .build();
+
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.errors.password").value("Password must be at least 8 characters long"));
+    }
+
+    @Test
+    void itShouldNotLoginUserWithBadCredentials() throws Exception {
+        User user = User.builder()
+                .email("newuser@test.com")
+                .password(passwordEncoder.encode("password"))
+                .firstName("user")
+                .lastName("test")
+                .active(false)
+                .role(UserRole.USER)
+                .build();
+
+        userRepository.save(user);
+
+        LoginRequestDto request = LoginRequestDto.builder()
+                .email("wronguser@test.com")
+                .password("password")
+                .build();
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.statusCode").value(401))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Full authentication is required to access this resource"));
-
-        Assertions.assertEquals(0, genreRepository.count());
-    }
-
-    @Test
-    void itShouldNotCreateGenreWithoutNameReturnsBadRequest() throws Exception {
-        String validGenreJson = """
-                {
-                    "name": ""
-                }
-                """;
-
-        mockMvc.perform(post("/genres/")
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.name").value("Name is required"));
-
-
-        Assertions.assertEquals(0, genreRepository.count());
-    }
-
-    @Test
-    void itShouldNotCreateGenreWithNameLengthGreaterThan50ReturnsBadRequest() throws Exception {
-        String validGenreJson = "{\"name\": \"" + "a".repeat(51) + "\"}";
-
-        mockMvc.perform(post("/genres/")
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.name").value("Name cannot exceed 50 characters"));
-
-
-        Assertions.assertEquals(0, genreRepository.count());
-    }
-
-    @Test
-    void itShouldNotCreateAlreadyExistingGenreReturnsBadRequest() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-
-        genreRepository.save(genre);
-
-        String validGenreJson = """
-                {
-                    "name": "Rock"
-                }
-                """;
-
-        mockMvc.perform(post("/genres/")
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("A genre with this name already exists: Rock"));
-
-
-        Assertions.assertEquals(1, genreRepository.count());
-    }
-
-    @Test
-    void itShouldUpdateGenre() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-        String validGenreJson = """
-                {
-                    "name": "Pop"
-                }
-                """;
-
-        mockMvc.perform(put("/genres/{id}", genre.getId())
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(genre.getId().toString()))
-            .andExpect(jsonPath("$.name").value("Pop"));
-    }
-
-    @Test
-    void itShouldNotUpdateGenreWithRoleUser() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-        String validGenreJson = """
-                {
-                    "name": "Pop"
-                }
-                """;
-
-        mockMvc.perform(put("/genres/{id}", genre.getId())
-                        .with(authToken(UserRole.USER))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.statusCode").value(403))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Access Denied"));
-
-        Assertions.assertTrue(genreRepository.findById(genre.getId()).isPresent());
-        Assertions.assertEquals("Rock", genreRepository.findById(genre.getId()).get().getName());
-    }
-
-    @Test
-    void itShouldNotUpdateGenreWithoutToken() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-        String validGenreJson = """
-                {
-                    "name": "Pop"
-                }
-                """;
-
-        mockMvc.perform(put("/genres/{id}", genre.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.statusCode").value(401))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Full authentication is required to access this resource"));
-
-        Assertions.assertTrue(genreRepository.findById(genre.getId()).isPresent());
-        Assertions.assertEquals("Rock", genreRepository.findById(genre.getId()).get().getName());
-    }
-
-    @Test
-    void itShouldNotUpdateNotFoundGenreReturnsNotFound() throws Exception {
-        UUID id = UUID.randomUUID();
-        String validGenreJson = """
-                {
-                    "name": "Rock"
-                }
-                """;
-
-        mockMvc.perform(put("/genres/{id}", id)
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.statusCode").value(404))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Genre not found with id: " + id));
-    }
-
-    @Test
-    void itShouldNotUpdateGenreWithoutNameReturnsBadRequest() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-        String validGenreJson = """
-                {
-                    "name": ""
-                }
-                """;
-
-        mockMvc.perform(put("/genres/{id}", genre.getId())
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.name").value("Name is required"));
-    }
-
-    @Test
-    void itShouldNotUpdateGenreWithNameLengthGreaterThan50ReturnsBadRequest() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-        String validGenreJson = "{\"name\": \"" + "a".repeat(51) + "\"}";
-
-        mockMvc.perform(put("/genres/{id}", genre.getId())
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.name").value("Name cannot exceed 50 characters"));
-    }
-
-    @Test
-    void itShouldNotUpdateAlreadyExistingGenreReturnsBadRequest() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-
-        String validGenreJson = """
-                {
-                    "name": "Rock"
-                }
-                """;
-
-        mockMvc.perform(put("/genres/{id}", genre.getId())
-                        .with(authToken(UserRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validGenreJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("A genre with this name already exists: Rock"));
-    }
-
-    @Test
-    void itShouldDeleteGenre() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-
-        Assertions.assertEquals(1, genreRepository.count());
-
-        mockMvc.perform(delete("/genres/{id}", genre.getId()).with(authToken(UserRole.ADMIN)))
-                .andExpect(status().isNoContent());
-
-        Assertions.assertEquals(0, genreRepository.count());
-    }
-
-    @Test
-    void itShouldNotDeleteGenreWithRoleUser() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-
-        mockMvc.perform(delete("/genres/{id}", genre.getId()).with(authToken(UserRole.USER)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.statusCode").value(403))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Access Denied"));
-
-        Assertions.assertEquals(1, genreRepository.count());
-    }
-
-    @Test
-    void itShouldNotDeleteGenreWithoutToken() throws Exception {
-        Genre genre = new Genre();
-        genre.setName("Rock");
-        genre = genreRepository.save(genre);
-
-        mockMvc.perform(post("/genres/{id}", genre.getId()))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.statusCode").value(401))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Full authentication is required to access this resource"));
-
-        Assertions.assertEquals(1, genreRepository.count());
-    }
-
-    @Test
-    void itShouldNotDeleteNotFoundGenreReturnsNotFound() throws Exception {
-        UUID id = UUID.randomUUID();
-
-        mockMvc.perform(delete("/genres/{id}", id).with(authToken(UserRole.ADMIN)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.statusCode").value(404))
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.errors.message").value("Genre not found with id: " + id));
+                .andExpect(jsonPath("$.errors.message").value("Bad credentials"));
     }
 }

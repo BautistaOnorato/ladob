@@ -30,8 +30,6 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "200", description = "User logged in successfully",
                     content = @Content(schema = @Schema(implementation = LoginResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Body did not pass validation filters",
-                    content = @Content(schema = @Schema(implementation = ApiErrorDto.class))),
-            @ApiResponse(responseCode = "401", description = "User did not pass authorization filters",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
     @PostMapping("/login")
