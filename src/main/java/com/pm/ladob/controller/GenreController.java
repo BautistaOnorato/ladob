@@ -1,7 +1,7 @@
 package com.pm.ladob.controller;
 
 import com.pm.ladob.dto.ApiErrorDto;
-import com.pm.ladob.dto.GenreRequestDto;
+import com.pm.ladob.dto.genre.GenreRequestDto;
 import com.pm.ladob.models.Genre;
 import com.pm.ladob.service.genre.IGenreService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,12 +9,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.groups.Default;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -65,9 +66,11 @@ public class GenreController {
             @ApiResponse(responseCode = "400", description = "Body did not pass validation filters",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/")
     public ResponseEntity<Genre> createGenre(
-            @Validated({Default.class}) @RequestBody GenreRequestDto genreRequestDto
+            @Valid @RequestBody GenreRequestDto genreRequestDto
     ) {
         Genre genre = genreService.createGenre(genreRequestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(genre);
@@ -80,10 +83,12 @@ public class GenreController {
             @ApiResponse(responseCode = "400", description = "Unable to find genre in the database or body did not pass validation filters",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Genre> updateGenre(
             @PathVariable UUID id,
-            @Validated({Default.class}) @RequestBody GenreRequestDto genreRequestDto
+            @Valid @RequestBody GenreRequestDto genreRequestDto
     ) {
         Genre genre = genreService.updateGenre(genreRequestDto, id);
         return ResponseEntity.ok().body(genre);
@@ -96,6 +101,8 @@ public class GenreController {
             @ApiResponse(responseCode = "400", description = "Unable to find genre in the database",
                     content = @Content(schema = @Schema(implementation = ApiErrorDto.class)))
     })
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Genre> deleteGenre(@PathVariable UUID id) {
         genreService.deleteGenre(id);

@@ -1,0 +1,11 @@
+### POST register new user
+POST http://localhost:8000/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "user",
+  "lastName": "user",
+  "email": "user@gmail.com",
+  "password": "12345678"
+}
+###

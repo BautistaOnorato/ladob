@@ -1,4 +1,4 @@
-package com.pm.ladob.genre;
+package com.pm.ladob.auth;
 
 import com.pm.ladob.AbstractIntegrationTest;
 import com.pm.ladob.config.TestUserDataLoader;
@@ -20,13 +20,14 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.matchesRegex;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestUserDataLoader.class)
-public class GenreControllerMVCTest extends AbstractIntegrationTest {
+public class AuthControllerMVCTest extends AbstractIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 

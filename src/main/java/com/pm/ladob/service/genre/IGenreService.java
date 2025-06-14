@@ -1,10 +1,9 @@
 package com.pm.ladob.service.genre;
 
-import com.pm.ladob.dto.GenreRequestDto;
+import com.pm.ladob.dto.genre.GenreRequestDto;
 import com.pm.ladob.models.Genre;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface IGenreService {

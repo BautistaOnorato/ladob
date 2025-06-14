@@ -1,6 +1,7 @@
 ### POST request to create genre
 POST http://localhost:8000/genres/
 Content-Type: application/json
+Authorization: Bearer {{adminToken}}
 
 {
   "name": "Pop"

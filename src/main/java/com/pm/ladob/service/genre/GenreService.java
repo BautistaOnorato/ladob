@@ -1,19 +1,17 @@
 package com.pm.ladob.service.genre;
 
-import com.pm.ladob.dto.GenreRequestDto;
+import com.pm.ladob.dto.genre.GenreRequestDto;
 import com.pm.ladob.exceptions.AlreadyExistsException;
 import com.pm.ladob.exceptions.ResourceNotFoundException;
 import com.pm.ladob.models.Genre;
 import com.pm.ladob.repository.GenreRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GenreService implements IGenreService {
@@ -35,7 +33,6 @@ public class GenreService implements IGenreService {
 
     @Override
     public Genre createGenre(GenreRequestDto genreRequestDto) {
-        log.info("Creating genre...");
         if (genreRepository.existsByName(genreRequestDto.getName())) {
             throw new AlreadyExistsException("A genre with this name already exists: " + genreRequestDto.getName());
         }

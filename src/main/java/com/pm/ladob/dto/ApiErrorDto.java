@@ -18,6 +18,6 @@ public class ApiErrorDto {
         this.errors = new HashMap<>();
         this.errors.put("message", ex.getMessage());
         this.statusCode = code.value();
-        this.message = ex.getMessage();
+        this.message = code.name();
     }
 }

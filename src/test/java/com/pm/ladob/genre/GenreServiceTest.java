@@ -1,6 +1,6 @@
 package com.pm.ladob.genre;
 
-import com.pm.ladob.dto.GenreRequestDto;
+import com.pm.ladob.dto.genre.GenreRequestDto;
 import com.pm.ladob.exceptions.AlreadyExistsException;
 import com.pm.ladob.exceptions.ResourceNotFoundException;
 import com.pm.ladob.models.Genre;

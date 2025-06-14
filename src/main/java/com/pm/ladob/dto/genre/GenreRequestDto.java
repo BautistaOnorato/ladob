@@ -1,4 +1,4 @@
-package com.pm.ladob.dto;
+package com.pm.ladob.dto.genre;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

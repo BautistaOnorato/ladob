@@ -1,0 +1,11 @@
+### POST login existing user with role ADMIN
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "12345678"
+}
+
+> {% client.global.set("adminToken", response.body.token) %}
+###
